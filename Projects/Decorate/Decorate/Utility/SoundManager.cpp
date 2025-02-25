@@ -60,7 +60,12 @@ void SoundManager::Play(const char* name, bool isSameStream)
 
 void SoundManager::StopAllSound()
 {
-	StopMusic();
+	//StopMusic();
+	for (auto& sound : m_data)
+	{
+		// サウンドの停止
+		StopSoundMem(sound.second.handle);
+	}
 }
 
 void SoundManager::StopAllSE()

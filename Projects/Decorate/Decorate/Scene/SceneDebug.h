@@ -22,7 +22,6 @@ public:		// 列挙型
 		Select,		// セレクト
 		Gear,		// 装備品
 		Stage1,		// ステージ1
-		Clear,		// クリア
 		GameOver,	// ゲームオーバー
 
 		SceneNum,	// シーン数

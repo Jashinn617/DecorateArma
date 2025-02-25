@@ -40,8 +40,8 @@ namespace
         kTitlePath + "Background/back6.png",
     };
 
-    constexpr int kAnimNum = 1;										// モデルのアニメーション番号
-    constexpr float kAnimSpeed = 0.7f;								// アニメーション速度
+    constexpr int kAnimNum = 3;										// モデルのアニメーション番号
+    constexpr float kAnimSpeed = 0.3f;								// アニメーション速度
 
     constexpr float kNear = 5.0f;									// カメラの一番近い描画距離
     constexpr float kFar = 500.0f;									// カメラの一番遠い描画距離

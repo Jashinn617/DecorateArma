@@ -76,6 +76,17 @@ void ObjectManager::Update()
 				発見状態だった場合はボス戦状態になる*/
 				m_isBossButtle = dynamic_cast<EnemyBase*>(obj)->IsFinding();
 			}
+
+			// 敵が死亡していた場合
+			if (dynamic_cast<EnemyBase*>(obj)->IsDead())
+			{
+				// かつロックオンされていた場合
+				if (m_pLockOnEnemy == obj)
+				{
+					// ロックオン状態を無効にする
+					m_pLockOnEnemy = nullptr;
+				}
+			}
 		}
 
 		// オブジェクトが存在していない場合
@@ -96,13 +107,6 @@ void ObjectManager::Update()
 			// プレイヤー以外
 			if (obj->GetColType() != ObjectBase::ColType::Player)
 			{
-				// ロックオンされていた場合
-				if (m_pLockOnEnemy == obj)
-				{
-					// ロックオン状態を無効にする
-					m_pLockOnEnemy = nullptr;
-				}
-
 				// ポインタを解放する
 				delete obj;
 				obj = nullptr;

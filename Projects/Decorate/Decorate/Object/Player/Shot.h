@@ -96,6 +96,5 @@ private:		// 変数
 	std::vector<int> m_bulletVertexShaderType;		// 頂点タイプ
 	Player* m_pPlayer;								// プレイヤーポインタ
 	std::shared_ptr<Model> m_pModel;				// 武器本体モデルポインタ
-	std::shared_ptr<Time> m_pBulletIntervalTime;	// 次の球が発射されるまでの時間
 	std::shared_ptr<ToonShader> m_pToonShader;		// トゥーンシェーダポインタ
 };

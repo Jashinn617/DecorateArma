@@ -2,7 +2,6 @@
 
 #include "SceneDebug.h"
 
-#include "SceneClear.h"
 #include "SceneGameOver.h"
 #include "SceneGear.h"
 #include "SceneSelect.h"
@@ -35,10 +34,10 @@ SceneDebug::SceneDebug() :
 	m_sceneString[static_cast<int>(SceneType::Gear)] = "Gear";			// 装備
 	m_sceneString[static_cast<int>(SceneType::Select)] = "Select";		// セレクト
 	m_sceneString[static_cast<int>(SceneType::Stage1)] = "Stage1";		// ステージ1
-	m_sceneString[static_cast<int>(SceneType::Clear)] = "Clear";		// クリア
 	m_sceneString[static_cast<int>(SceneType::GameOver)] = "GameOver";	// ゲームオーバー
 
-	
+	// サウンドを止める
+	SoundManager::GetInstance().StopAllSound();
 }
 
 std::shared_ptr<SceneBase> SceneDebug::Update()
@@ -131,9 +130,6 @@ std::shared_ptr<SceneBase> SceneDebug::MoveNextScene()
 		break;
 	case static_cast<int>(SceneType::Stage1):	// ステージ1
 		nextScene = std::make_shared<SceneStage>(Game::StageKind::Stage1);
-		break;
-	case static_cast<int>(SceneType::Clear):	// クリア
-		nextScene = std::make_shared<SceneClear>(Game::StageKind::StageTest);
 		break;
 	case static_cast<int>(SceneType::GameOver):	// ゲームオーバー
 		nextScene = std::make_shared<SceneGameOver>(Game::StageKind::StageTest);

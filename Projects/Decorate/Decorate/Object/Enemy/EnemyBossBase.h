@@ -23,6 +23,15 @@ public:
 	/// </summary>
 	void Draw2D() override final;
 
+
+	/// <summary>
+	/// ダメージ処理
+	/// </summary>
+	/// <param name="targetPos">攻撃を当てた相手の座標</param>
+	/// <param name="damagePoint">ダメージ量</param>
+	/// <param name="isInvincible">無敵時間を発動させるかどうか</param>
+	void OnDamage(VECTOR targetPos, int damagePoint, bool isInvincible = true) override final;
+
 	/// <summary>
 	/// 敵の種類の取得(ボス)
 	/// </summary>

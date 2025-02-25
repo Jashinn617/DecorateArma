@@ -195,9 +195,6 @@
     <ClCompile Include="Object\Enemy\EnemyBossParasite.cpp">
       <Filter>ソース ファイル\Object\Enemy</Filter>
     </ClCompile>
-    <ClCompile Include="Scene\SceneClear.cpp">
-      <Filter>ソース ファイル\Scene</Filter>
-    </ClCompile>
     <ClCompile Include="Scene\SceneGameOver.cpp">
       <Filter>ソース ファイル\Scene</Filter>
     </ClCompile>
@@ -358,9 +355,6 @@
     </ClInclude>
     <ClInclude Include="Object\Enemy\EnemyBossParasite.h">
       <Filter>ヘッダー ファイル\Object\Enemy</Filter>
-    </ClInclude>
-    <ClInclude Include="Scene\SceneClear.h">
-      <Filter>ヘッダー ファイル\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Scene\SceneGameOver.h">
       <Filter>ヘッダー ファイル\Scene</Filter>

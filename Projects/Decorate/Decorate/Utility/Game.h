@@ -6,17 +6,17 @@
 /// </summary>
 namespace Game
 {
-	const char* const kTitleText = "DecorateArma";		// ウィンドウ名
+	const char* const kTitleText = "DecorateArma";					// ウィンドウ名
 
 #ifdef _DEBUG
-	constexpr bool kWindowMode = true;					// ウィンドウモード
+	constexpr bool kWindowMode = true;								// ウィンドウモード
 #else
-	constexpr bool kWindowMode = false;					// フルスクリーン
+	constexpr bool kWindowMode = false;								// フルスクリーン
 #endif // _DEBUG
 
-	constexpr int kScreenWidth = 1920;					// 画面横サイズ
-	constexpr int kScreenHeight = 1080;					// 画面縦サイズ
-	constexpr int kClorDepth = 32;						// カラービット数
+	constexpr int kScreenWidth = 1920;								// 画面横サイズ
+	constexpr int kScreenHeight = 1080;								// 画面縦サイズ
+	constexpr int kClorDepth = 32;									// カラービット数
 
 	constexpr float kStandardTimePer1Frame = 16666.6f;				// 1フレームあたりの標準時間(現在60fps)
 	constexpr float kFov = 45.0f * DX_PI_F / 180.0f;				// カメラの視野角

@@ -18,7 +18,7 @@ using namespace CharacterData;
 
 namespace
 {
-	constexpr int kInvincibleTime = 30;		// 無敵時間
+	constexpr int kInvincibleTime = 0;		// 無敵時間
 	constexpr float kDashSpeedRate = 2.0f;	// ダッシュ速度倍率
 	constexpr float kAccRate = 0.5f;		// 加速度倍率
 }

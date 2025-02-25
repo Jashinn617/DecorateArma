@@ -20,9 +20,9 @@ namespace
 {
 	const char* const kFileName = "Data/Model/ShotWeapon/UFO.mv1";					// モデルファイルパス
 	const char* const kBulletFileName = "Data/Model/ShotWeapon/Bullet/Shot.mv1";	// 弾ファイルパス
-	
+
 	constexpr float kPlayerDistance = 60.0f;					// プレイヤーとの距離
-	constexpr float kPlayerToHeight = 150.0f;					// プレイヤーからの高さ
+	constexpr float kPlayerToHeight = 225.0f;					// プレイヤーからの高さ
 	constexpr float kPlayerLeftBack = DX_PI_F * 5.0f / 4.0f;	// プレイヤーの左後ろ
 	constexpr float kSinSpeed = 0.03f;							// 昇降速度
 	constexpr float kSinSwing = 4.0f;							// 昇降幅
@@ -38,15 +38,14 @@ namespace
 	constexpr VECTOR kScale = { 0.4f,0.4f,0.4f };			// 弾のスケール
 }
 
-Shot::Shot(Player* pPlayer, int atkPoint):
+Shot::Shot(Player* pPlayer, int atkPoint) :
 	m_atkPoint(atkPoint),
 	m_sinCount(0.0f),
 	m_sinPosY(0.0f),
-	m_pos{0.0f,0.0f,0.0f},
+	m_pos{ 0.0f,0.0f,0.0f },
 	m_cameraRotMtx(MGetRotY(0)),
 	m_pPlayer(pPlayer),
 	m_pModel(std::make_shared<Model>(kFileName)),
-	m_pBulletIntervalTime(std::make_shared<Time>(kIntervalTime)),
 	m_pToonShader(std::make_shared<ToonShader>())
 {
 	// 弾のモデルハンドルの取得
@@ -62,7 +61,7 @@ Shot::Shot(Player* pPlayer, int atkPoint):
 		// 座標初期化
 		bullet.pos = VGet(0.0f, 0.0f, 0.0f);
 		// 進む向きの初期化
-		bullet.direction = VGet(0.0f, 0.0f,0.0f);
+		bullet.direction = VGet(0.0f, 0.0f, 0.0f);
 		// 消えるまでの時間の生成
 		bullet.vanishTime = std::make_shared<Time>(kVanishTime);
 		// 当たり判定の生成
@@ -155,8 +154,6 @@ void Shot::Draw()
 			}
 			// シェーダを使わない設定にする
 			m_pToonShader->ShaderEnd();
-			// 当たり判定の描画
-			//bullet.coll->DebugDraw(0xff0000);
 		}
 	}
 
@@ -177,7 +174,7 @@ void Shot::OnAttack(CharacterBase* pEnemy)
 			pEnemy->OnDamage(m_pos, m_atkPoint, false);
 
 			// 弾を消す
-			bullet.isExist = false;	
+			bullet.isExist = false;
 		}
 		else
 		{
@@ -211,59 +208,53 @@ void Shot::UpdateBullet()
 			}
 		}
 	}
-
 }
 
 void Shot::MakeBullet()
 {
 	// LBボタンが押された場合
-	if (Pad::IsPress(PAD_INPUT_5))
+	if (Pad::IsTrigger(PAD_INPUT_5))
 	{
-		// 前の弾が発射されてから一定時間経った場合
-		if (m_pBulletIntervalTime->Update())
+		// 弾を一つ一つ見ていく
+		for (auto& bullet : m_bullet)
 		{
-			// 弾を一つ一つ見ていく
-			for (auto& bullet : m_bullet)
+			// 存在していなかったら発射する
+			if (!bullet.isExist)
 			{
-				// 存在していなかったら発射する
-				if (!bullet.isExist)
+				// 存在フラグを立てる
+				bullet.isExist = true;
+				// 位置の決定
+				bullet.pos = m_pos;
+				bullet.pos.y += kStartPosHeight;
+				// モデル座標更新
+				bullet.model->SetPos(bullet.pos);
+				// SEを鳴らす
+				SoundManager::GetInstance().Play("Shot", true);
+
+				// カメラがロックオン状態だった時
+				if (m_pPlayer->GetCamera()->IsLockOn())
 				{
-					// 存在フラグを立てる
-					bullet.isExist = true;
-					// 位置の決定
-					bullet.pos = m_pos;
-					bullet.pos.y += kStartPosHeight;
-					// モデル座標更新
-					bullet.model->SetPos(bullet.pos);
-					// SEを鳴らす
-					SoundManager::GetInstance().Play("Shot", true);
+					/*ロックオンしている敵に向けて撃つ*/
+					// ターゲット座標取得
+					VECTOR targetPos = m_pPlayer->GetCamera()->GetLockOnEnemyPos();
+					// 高さ調整
+					targetPos.y += kEnemyHeight;
 
-					// カメラがロックオン状態だった時
-					if (m_pPlayer->GetCamera()->IsLockOn())
-					{
-						/*ロックオンしている敵に向けて撃つ*/
-						// ターゲット座標取得
-						VECTOR targetPos = m_pPlayer->GetCamera()->GetLockOnEnemyPos();
-						// 高さ調整
-						targetPos.y += kEnemyHeight;
-
-						// 進む方向の決定
-						bullet.direction = VNorm(VSub(targetPos, bullet.pos));
-					}
-					// 通常時
-					else
-					{		
-						/*カメラから見て前に飛ばす*/
-
-						// 進む方向の決定
-						bullet.direction = VGet(-m_cameraRotMtx.m[2][0],
-							-m_cameraRotMtx.m[2][1],
-							-m_cameraRotMtx.m[2][2]);
-					}
-					break;
+					// 進む方向の決定
+					bullet.direction = VNorm(VSub(targetPos, bullet.pos));
 				}
+				// 通常時
+				else
+				{
+					/*カメラから見て前方向に飛ばす*/
+
+					// 進む方向の決定
+					bullet.direction = VGet(-m_cameraRotMtx.m[2][0],
+											-m_cameraRotMtx.m[2][1],
+											-m_cameraRotMtx.m[2][2]);
+				}
+				break;
 			}
-			m_pBulletIntervalTime->Reset();
-		}		
+		}
 	}
 }

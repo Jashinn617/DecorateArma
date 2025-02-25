@@ -79,15 +79,39 @@ private:	// 関数
 	/// </summary>
 	void DrawClearScene();
 
+	/// <summary>
+	/// 画像ロード
+	/// </summary>
+	void LoadImg();
+
+	/// <summary>
+	/// 画像デリート
+	/// </summary>
+	void DeleteImg();
+
 private:	// 変数
 	int m_infoH;									// 操作説明画像ハンドル
 	bool m_isGameClear;								// ゲームクリアしたかどうか
 	bool m_isGameOver;								// ゲームオーバーになったかどうか
+	
+	/*クリア画面関係*/
+	int m_clearTextH;								// クリアテキスト画像ハンドル
+	int m_boxH;										// ボックス画像ハンドル
+	int m_cursorH;									// カーソル画像ハンドル
+	int m_mouseCursorH;								// マウスカーソル画像ハンドル
+	int m_mouseCursorPosX;							// マウスカーソルX座標
+
+	float m_mouseCursorSinCount;	// マウスカーソル拡縮カウント
+	float m_mouseCursorScaleSize;	// マウスカーソル拡縮サイズ
+	float m_mouseCursorScaleRate;	// マウスカーソル拡大率
+
+	bool m_isLeft;									// カーソルが左にあるかどうか
+	bool m_isCursorMove;							// カーソルが移動しているかどうか
 
 	Game::StageKind m_stageKind;					// ステージの種類
 	SceneType m_sceneType;							// シーンタイプ
 
 	std::shared_ptr<Gear> m_pGear;					// 装備ポインタ
 	std::shared_ptr<ObjectManager> m_pObject;		// オブジェクトマネージャー
-	std::shared_ptr<SceneBase> m_nextScene;		// 次のシーンのポインタ
+	std::shared_ptr<SceneBase> m_nextScene;			// 次のシーンのポインタ
 };

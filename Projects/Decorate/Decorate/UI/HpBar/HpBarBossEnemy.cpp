@@ -85,8 +85,6 @@ void HpBarBossEnemy::Update()
 
 void HpBarBossEnemy::Draw()
 {
-	
-
 	// 減少後画像描画
 	DrawRectGraph(kHpBarPosX, kHpBarPosY,	// 座標
 		0, 0,								// 描画する画像の左上座標

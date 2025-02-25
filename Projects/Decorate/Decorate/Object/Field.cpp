@@ -19,6 +19,9 @@ namespace
 		"Test/Test.mv1",
 		"Stage1/Stage1.mv1",
 	};
+
+	constexpr VECTOR kScale = { 0.4f,0.4f,0.4f };		// モデルスケール
+	constexpr VECTOR kPos = { 0.0f,-300.0f,0.0f };		// モデル座標
 }
 
 Field::Field()
@@ -32,8 +35,8 @@ Field::Field(Game::StageKind stageKind)
 	// モデル生成
 	m_pModel = std::make_shared<Model>(modelPath.c_str());
 
-	m_pModel->SetScale(VGet(0.4f, 0.4f, 0.4f));
-	m_pModel->SetPos(VGet(0.0f, -300.0f, 0.0f));
+	m_pModel->SetScale(kScale);
+	m_pModel->SetPos(kPos);
 
 	// モデルの頂点タイプの取得
 	for (int i = 0; i < MV1GetTriangleListNum(m_pModel->GetModelHandle()); i++)

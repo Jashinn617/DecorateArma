@@ -1,7 +1,9 @@
 ﻿#include "EnemyBossBase.h"
 
 #include "../Model.h"
+#include "../ObjectManager.h"
 
+#include "../../Utility/Gear.h"
 #include "../../Utility/Time.h"
 #include "../../Utility/CollisionShape.h"
 
@@ -33,6 +35,28 @@ void EnemyBossBase::Draw2D()
 
 	// HPバー描画
 	m_pHpBar->Draw();
+}
+
+void EnemyBossBase::OnDamage(VECTOR targetPos, int damagePoint, bool isInvincible)
+{
+	// ダメージ中は処理をしない
+	if (m_isDamage) return;
+
+	// HPを減らす
+	m_statusData.hp -= damagePoint;
+
+	// HPが0以下になって死亡状態でなかった場合
+	if (m_statusData.hp <= 0 && !m_isDead)
+	{
+		// 死亡する
+		m_isDead = true;
+		// アイテムドロップ
+		m_pObjectManager->GetGear()->ObtainItemOnStage();
+	}
+	// 無敵時間が発動したときのみ
+	if (!isInvincible) return;
+	// ダメージ状態になる
+	m_isDamage = true;
 }
 
 

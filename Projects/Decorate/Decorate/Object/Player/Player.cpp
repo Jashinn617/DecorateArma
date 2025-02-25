@@ -22,6 +22,7 @@
 
 #include "../../Common/CsvLoad.h"
 
+#include <string>
 #include <cassert>
 
 
@@ -32,6 +33,8 @@ namespace
 
 	// 時間
 	constexpr int kAttackStanTime = 20;						// 攻撃間隔時間
+	constexpr int kJabAttackStanTime = 1;					// ジャブ攻撃間隔時間
+	constexpr int kJabAttackTime = 30;						// ジャブ攻撃時間
 	constexpr int kInvincibleTime = 150;					// 無敵時間
 	constexpr int kDodgeTime = 15;							// 回避時間
 
@@ -40,10 +43,12 @@ namespace
 	constexpr int kSecondStagePower = 25;					// 二段階目
 	constexpr int kThirdStagePower = 35;					// 三段階目
 
+	constexpr int kAttackNum = 3;							// 攻撃段階数
+	constexpr int kLeftAttackNum = 2;						// 左手攻撃回目
 	constexpr float kHardAttackRate = 1.5f;					// 強攻撃時の攻撃力倍率
 
 	// 速度関係
-	constexpr float kMoveSpeedDashRate = 1.7f;				// ダッシュ時速度
+	constexpr float kMoveSpeedDashRate = 2.0f;				// ダッシュ時速度
 	constexpr float kAccelerationRate = 0.5f;				// 加速度
 	constexpr float kDodgeSpeedRate = 3.0f;					// 回避時速度
 	constexpr float kGravity = 0.8f;						// 重力
@@ -57,7 +62,7 @@ namespace
 	constexpr float kHeight = 140.0f;						// 高さ
 	constexpr float kSize = 50.0f;							// モデルサイズ
 	constexpr float kCapsuleRadius = 30.0f;					// 衝突判定用カプセル半径
-	constexpr float kAttackRadius = 70.0f;					// 攻撃判定用球の半径
+	constexpr float kAttackRadius = 40.0f;					// 攻撃判定用球の半径
 	constexpr float kAttackHeight = 0.0f;					// 攻撃判定用球の高さ
 	constexpr float kHardRadius = 60.0f;					// 強攻撃当たり判定球の半径
 	constexpr float kHardHeight = 0.0f;						// 強攻撃当たり判定球の高さ
@@ -65,14 +70,16 @@ namespace
 	constexpr VECTOR kScaleVec = { 1.2f,1.2f,1.2f };			// モデルスケール
 	constexpr VECTOR kEffectPosControl = { 0.0f,70.0f,0.0f };	// エフェクト座標調節用
 
+	const std::string kAttackSeName = "Attack";					// 攻撃SE名
+
 	/// <summary>
 	/// アニメーション切り替え速度
 	/// </summary>
 	enum kAnimChangeFrameNum
 	{
 		Idle = 2,
-		Walk = 1,
-		Dash = 1,
+		Walk = 2,
+		Dash = 2,
 		Attack1 = 1,
 		Attack2 = 1,
 		Attack3 = 1,
@@ -92,6 +99,7 @@ Player::Player() :
 	m_isNextAttack(false),
 	m_isLockOn(false),
 	m_isDodge(false),
+	m_isGiveDamage(false),
 	m_moveDirection{ 0.0f,0.0f,0.0f },
 	m_attackPos{ 0.0f,0.0f,0.0f },
 	m_dodgeDirection{ 0.0f,0.0f,0.0f },
@@ -99,79 +107,31 @@ Player::Player() :
 	m_pState(std::make_shared<PlayerState>(this)),
 	m_pCamera(std::make_shared<Camera>()),
 	m_attackStanTime(std::make_shared<Time>(kAttackStanTime)),
+	m_jabAttackStanTime(std::make_shared<Time>(kJabAttackStanTime)),
+	m_jabAttackTime(std::make_shared<Time>(kJabAttackTime)),
 	m_invincibleTime(std::make_shared<Time>(kInvincibleTime)),
 	m_dodgeTime(std::make_shared<Time>(kDodgeTime))
 {
 	// アニメーションロード
 	CsvLoad::GetInstance().AnimLoad(m_animData, kName);
-
 	// ショット作成
 	m_pShot = std::make_shared<Shot>(this, m_statusData.shotAtk);
 	// ステータス情報初期化
 	SetStatus();
-
-	/*移動速度初期化*/
-	m_moveData.walkSpeed = m_statusData.spd;
-	m_moveData.dashSpeed = m_statusData.spd * kMoveSpeedDashRate;
-	m_moveData.acc = m_statusData.spd * kAccelerationRate;
-	m_moveData.rotSpeed = kAngleSpeed;
-
-	// モデルポインタ作成
-	m_pModel = std::make_shared<Model>(kFileName);
-	// モデルスケール設定
-	m_pModel->SetScale(kScaleVec);
-	// アニメーション初期化
-	m_pModel->SetAnim(m_animData.idle, true, false);
-
-	// モデル頂点の取得
-	m_topFrameIndex = MV1SearchFrame(m_pModel->GetModelHandle(), "mixamorig:HeadTop_End");
-	assert(m_topFrameIndex != -1);
-	assert(m_topFrameIndex != -2);
-	// モデル底辺の取得
-	m_bottomFrameIndex = MV1SearchFrame(m_pModel->GetModelHandle(), "mixamorig:RightToeBase");
-	assert(m_bottomFrameIndex != -1);
-	assert(m_bottomFrameIndex != -2);
-	// 攻撃時エフェクト座標の取得
-	m_attackEffectIndex = MV1SearchFrame(m_pModel->GetModelHandle(), "mixamorig:RightHandMiddle1");
-	assert(m_attackEffectIndex != -1);
-	assert(m_attackEffectIndex != -2);
-	// 座標設定
-	m_attackEffectPos = MV1GetFramePosition(m_pModel->GetModelHandle(), m_attackEffectIndex);
-
-	// 攻撃座標設定
-	m_hardAttackIndex = MV1SearchFrame(m_pModel->GetModelHandle(), "mixamorig:RightFoot");
-	assert(m_hardAttackIndex != -1);
-	assert(m_hardAttackIndex != -2);
-	m_hardAttackPos = MV1GetFramePosition(m_pModel->GetModelHandle(), m_hardAttackIndex);
-
+	// モデルデータ初期化
+	InitModelData();
+	// フレーム初期設定
+	InitFrame();
 	// 初期ステイトの設定(待機状態から)
 	m_pState->SetState(PlayerState::StateKind::Idle);
-
-	/*情報初期化*/
-	m_characterInfo.pos = VGet(0.0f, 0.0f, 0.0f);
-	m_characterInfo.topPos = MV1GetFramePosition(m_pModel->GetModelHandle(), m_topFrameIndex);
-	m_characterInfo.bottomPos = MV1GetFramePosition(m_pModel->GetModelHandle(), m_bottomFrameIndex);
-	m_characterInfo.vec = VGet(0.0f, 0.0f, 0.0f);
-	m_characterInfo.rot = VGet(0.0f, 0.0f, 0.0f);
-	m_characterInfo.modelH = -1;
-	m_characterInfo.isExist = true;
-	m_objSize = kSize;
-	m_angle = 0.0f;
-
-	/*当たり判定ポインタ作成*/
-	// プレイヤー
-	m_pCollShape = std::make_shared<CollisionShape>(m_characterInfo.topPos, m_characterInfo.bottomPos, kCapsuleRadius);
-	// 通常攻撃
-	m_attackColl = std::make_shared<CollisionShape>(m_attackEffectPos, kAttackRadius, kAttackHeight);
-	// 強攻撃
-	m_hardAtkColl = std::make_shared<CollisionShape>(m_hardAttackPos, kHardRadius, kHardHeight);
-
+	// 情報初期化
+	InitData();
+	// 当たり判定ポインタ作成
+	InitColl();
 	// 最大HP設定
 	m_maxHp = m_statusData.hp;
-
 	// HPバー作成
 	m_pHpBar = std::make_shared<HpBarPlayer>(m_statusData.hp);
-
 	// モデルの頂点タイプの取得
 	for (int i = 0; i < MV1GetTriangleListNum(m_pModel->GetModelHandle()); i++)
 	{
@@ -190,70 +150,39 @@ void Player::Update()
 	// ステイト更新
 	m_pState->Update();
 	UpdateState();
-
 	// 移動更新
 	m_characterInfo.vec = Move();
 	// 重力による落下処理
 	UpdateGravity();
-
-	// アニメーション更新
-	m_pModel->Update();
-	// モデル座標の設定
-	m_pModel->SetPos(m_characterInfo.pos);
-	// モデル回転の設定
-	m_pModel->SetRot(VGet(0.0f, m_angle, 0.0f));
-
+	// モデル関係更新処理
+	UpdateModel();
 	// HPバー更新
 	m_pHpBar->Update();
-
 	// カメラ更新
 	UpdateCamera();
-
-	// カメラの角度行列の取得
-	MATRIX rotMtx = MGetRotY(m_pCamera->GetCameraAngleX());
-	// ショットにカメラの角度行列を渡す
-	m_pShot->SetCameraRot(rotMtx);
-	// 遠距離攻撃武器更新
-	m_pShot->Update(m_characterInfo.pos, m_angle);
-
-	// フレーム座標の更新
-	m_characterInfo.topPos = MV1GetFramePosition(m_pModel->GetModelHandle(), m_topFrameIndex);
-	m_characterInfo.bottomPos = MV1GetFramePosition(m_pModel->GetModelHandle(), m_bottomFrameIndex);
-	UpdateAttackPosition(m_angle);
-	m_hardAttackPos = MV1GetFramePosition(m_pModel->GetModelHandle(), m_hardAttackIndex);
-
-	// ダメージ中の場合は攻撃を受けない
-	if (m_isDamage)
-	{
-		// 一定時間経過した場合
-		if (m_invincibleTime->Update())
-		{
-			// タイマーリセット
-			m_invincibleTime->Reset();
-			// ダメージ中フラグをfalseにする
-			m_isDamage = false;
-		}
-	}
-
-#ifdef _DEBUG
-	// バックスペースキーが押された場合
-	if (CheckHitKey(KEY_INPUT_BACK))
-	{
-		// HPを減らす
-		OnDamage(VGet(0.0f, 0.0f, 0.0f), 10);
-	}
-#endif // _DEBUG
+	// ショット更新
+	UpdateShot();
+	// フレーム座標更新
+	UpdateFramePosition();
+	// ダメージ判定
+	UpdateDamageDecision();
 }
 
 void Player::Draw(std::shared_ptr<ToonShader> pToonShader)
 {
+	// その手での攻撃中のみ
 	if (m_isAttack)
 	{
-		// デバッグ表示
-		m_attackColl->DebugDraw(0x0000ff);
-
+		// 攻撃当たり判定のデバッグ表示
+		if (m_attackCount % kAttackNum == kLeftAttackNum - 1)
+		{
+			m_leftAttackColl->DebugDraw(0x0000ff);
+		}
+		else
+		{
+			m_rightAttackColl->DebugDraw(0xff0000);
+		}
 	}
-
 	// モデルをフレームごとに描画する
 	for (int i = 0; i < MV1GetTriangleListNum(m_pModel->GetModelHandle()); i++)
 	{
@@ -266,7 +195,7 @@ void Player::Draw(std::shared_ptr<ToonShader> pToonShader)
 	// シェーダを使わない設定にする
 	pToonShader->ShaderEnd();
 
-	// 遠距離攻撃武器描画
+	// ショット描画
 	m_pShot->Draw();
 }
 
@@ -283,7 +212,6 @@ void Player::Draw2D()
 	DrawFormatString(0, 20, 0xffffff, "プレイヤー座標：%f,%f,%f"
 		, m_characterInfo.pos.x, m_characterInfo.pos.y, m_characterInfo.pos.z);
 	DrawFormatString(0, 180, 0xffffff, "攻撃カウント：%d", m_attackCount);
-
 	DrawFormatString(1200, 20, 0xffffff, "HP:%d", m_statusData.hp);
 	DrawFormatString(1200, 40, 0xffffff, "MATK:%d", m_statusData.meleeAtk);
 	DrawFormatString(1200, 80, 0xffffff, "SATK:%d", m_statusData.shotAtk);
@@ -298,6 +226,7 @@ void Player::OnDamage(VECTOR targetPos, int damagePoint, bool isInvincible)
 	// 回避中は処理をしない
 	if (m_isDodge) return;
 
+	// エフェクトを流す座標
 	VECTOR EffectPos = VAdd(m_characterInfo.pos, kEffectPosControl);
 
 	// エフェクトを流す
@@ -326,6 +255,77 @@ void Player::OnDamage(VECTOR targetPos, int damagePoint, bool isInvincible)
 	}
 	// ダメージ状態にする
 	m_pState->OnDamage();
+}
+
+void Player::InitModelData()
+{
+	// モデルポインタ作成
+	m_pModel = std::make_shared<Model>(kFileName);
+	// モデルスケール設定
+	m_pModel->SetScale(kScaleVec);
+	// アニメーション初期化
+	m_pModel->SetAnim(m_animData.idle, true, false);
+}
+
+void Player::InitFrame()
+{
+	// モデル頂点の取得
+	m_topFrameIndex = MV1SearchFrame(m_pModel->GetModelHandle(), "mixamorig:HeadTop_End");
+	assert(m_topFrameIndex != -1);
+	assert(m_topFrameIndex != -2);
+	// モデル底辺の取得
+	m_bottomFrameIndex = MV1SearchFrame(m_pModel->GetModelHandle(), "mixamorig:RightToeBase");
+	assert(m_bottomFrameIndex != -1);
+	assert(m_bottomFrameIndex != -2);
+
+	// 右手攻撃時座標の取得
+	m_rightAttackIndex = MV1SearchFrame(m_pModel->GetModelHandle(), "mixamorig:RightHandMiddle1");
+	assert(m_rightAttackIndex != -1);
+	assert(m_rightAttackIndex != -2);
+	// 座標設定
+	m_rightAttackPos = MV1GetFramePosition(m_pModel->GetModelHandle(), m_rightAttackIndex);
+	// 左手攻撃時座標の取得
+	m_leftAttackIndex = MV1SearchFrame(m_pModel->GetModelHandle(), "mixamorig:LeftHandMiddle1");
+	assert(m_leftAttackIndex != -1);
+	assert(m_leftAttackIndex != -2);
+	// 座標設定
+	m_leftAttackPos = MV1GetFramePosition(m_pModel->GetModelHandle(), m_leftAttackIndex);
+	// 攻撃座標設定
+	m_hardAttackIndex = MV1SearchFrame(m_pModel->GetModelHandle(), "mixamorig:RightFoot");
+	assert(m_hardAttackIndex != -1);
+	assert(m_hardAttackIndex != -2);
+	// 座標設定
+	m_hardAttackPos = MV1GetFramePosition(m_pModel->GetModelHandle(), m_hardAttackIndex);
+}
+
+void Player::InitData()
+{
+	// 移動速度初期化
+	m_moveData.walkSpeed = m_statusData.spd;
+	m_moveData.dashSpeed = m_statusData.spd * kMoveSpeedDashRate;
+	m_moveData.acc = m_statusData.spd * kAccelerationRate;
+	m_moveData.rotSpeed = kAngleSpeed;
+	// 情報初期化
+	m_characterInfo.pos = VGet(0.0f, 0.0f, 0.0f);
+	m_characterInfo.topPos = MV1GetFramePosition(m_pModel->GetModelHandle(), m_topFrameIndex);
+	m_characterInfo.bottomPos = MV1GetFramePosition(m_pModel->GetModelHandle(), m_bottomFrameIndex);
+	m_characterInfo.vec = VGet(0.0f, 0.0f, 0.0f);
+	m_characterInfo.rot = VGet(0.0f, 0.0f, 0.0f);
+	m_characterInfo.modelH = -1;
+	m_characterInfo.isExist = true;
+	m_objSize = kSize;
+	m_angle = 0.0f;
+}
+
+void Player::InitColl()
+{
+	// プレイヤー
+	m_pCollShape = std::make_shared<CollisionShape>(m_characterInfo.topPos, m_characterInfo.bottomPos, kCapsuleRadius);
+	// 通常攻撃
+	m_rightAttackColl = std::make_shared<CollisionShape>(m_rightAttackPos, kAttackRadius, kAttackHeight);
+	m_leftAttackColl = std::make_shared<CollisionShape>(m_leftAttackPos, kAttackRadius, kAttackHeight);
+	// 強攻撃
+	m_hardAtkColl = std::make_shared<CollisionShape>(m_hardAttackPos, kHardRadius, kHardHeight);
 }
 
 void Player::UpdateAngle()
@@ -496,6 +496,7 @@ void Player::InitDodge()
 	m_isAttack = false;
 	m_isHardAttack = false;
 	m_isNextAttack = false;
+	m_isGiveDamage = false;
 	m_attackStanTime->Reset();
 }
 
@@ -504,30 +505,15 @@ void Player::InitState()
 	/*現在のステイトによって初期化処理を変える*/
 	switch (m_pState->GetState())
 	{
-	case PlayerState::StateKind::Attack:
-
-		m_attackStanTime->Reset();		// 硬直時間のリセット
-		m_attackCount = 0;				// 攻撃回数のリセット
-
-		//	攻撃フラグを立てる
-		m_isAttack = true;
-		// 次の攻撃をするかどうかのフラグをfalseにする
-		m_isNextAttack = false;
-		// 攻撃判定リセットフラグを立てる
-		m_isResetAttack = true;
-
+	case PlayerState::StateKind::Attack:	// 攻撃
+		InitAttack();
 		break;
-
-	case PlayerState::StateKind::HardAttack:
-
+	case PlayerState::StateKind::HardAttack:	// 強攻撃
 		// 強攻撃フラグを立てる
 		m_isHardAttack = true;
-
 		break;
-
 	case PlayerState::StateKind::Dodge:	// 回避
 		InitDodge();
-
 		break;
 	default:
 		// 上記以外だった場合は何もしない
@@ -549,14 +535,33 @@ void Player::OnAttack(CharacterBase* pEnemy)
 {
 	// 攻撃中以外または衝突中は処理をしない
 	if (!m_isAttack || m_isColl) return;
+	// 一度攻撃を与えたら処理をしない
+	if (m_isGiveDamage) return;
 
-	// 衝突判定
-	if (m_attackColl->IsCollide(pEnemy->GetCollShape()))
+	// 攻撃回数によって判定場所を変える
+	if (m_attackCount % kAttackNum == kLeftAttackNum - 1)	// 左手
 	{
-		// 当たっていたらダメージを与える
-		pEnemy->OnDamage(m_characterInfo.pos, m_statusData.meleeAtk, true);
-		m_isColl = true;
-		m_isAttack = true;
+		// 衝突判定
+		if (m_leftAttackColl->IsCollide(pEnemy->GetCollShape()))
+		{
+			// 当たっていたらダメージを与える
+			pEnemy->OnDamage(m_characterInfo.pos, m_statusData.meleeAtk);
+			m_isColl = true;
+			m_isAttack = true;
+			m_isGiveDamage = true;
+		}
+	}
+	else	// 右手
+	{
+		// 衝突判定
+		if (m_rightAttackColl->IsCollide(pEnemy->GetCollShape()))
+		{
+			// 当たっていたらダメージを与える
+			pEnemy->OnDamage(m_characterInfo.pos, m_statusData.meleeAtk);
+			m_isColl = true;
+			m_isAttack = true;
+			m_isGiveDamage = true;
+		}
 	}
 }
 
@@ -564,6 +569,8 @@ void Player::OnHardAttack(CharacterBase* pEnemy)
 {
 	// 強攻撃中以外は処理をしない
 	if (!m_isHardAttack) return;
+	// 一度攻撃を与えたら処理をしない
+	if (m_isGiveDamage) return;
 
 	// デバッグ表示
 	m_hardAtkColl->DebugDraw(0xff00ff);
@@ -574,6 +581,7 @@ void Player::OnHardAttack(CharacterBase* pEnemy)
 		// 当たっていたらダメージを与える
 		pEnemy->OnDamage(m_characterInfo.pos,
 			static_cast<int>(m_statusData.meleeAtk * kHardAttackRate));
+		m_isGiveDamage = true;
 	}
 }
 
@@ -596,67 +604,165 @@ void Player::UpdateState()
 	switch (m_pState->GetState())
 	{
 	case PlayerState::StateKind::Idle:	// 待機
-		// 段々減速する
-		m_moveSpeed = max(m_moveSpeed - m_moveData.acc, 0.0f);
-		// アニメーションを待機状態に変更する
-		m_pModel->ChangeAnim(m_animData.idle, true, false, kAnimChangeFrameNum::Idle);
+		UpdateIdle();
 		break;
-
 	case PlayerState::StateKind::Walk:	// 歩き
-		// 移動速度を歩き状態の速度に変更する
-		m_moveSpeed = min(m_moveSpeed + m_moveData.acc, m_moveData.walkSpeed);
-		// アニメーションを歩きアニメーションに変更する
-		m_pModel->ChangeAnim(m_animData.walk, true, false, kAnimChangeFrameNum::Walk);
-		// SEを鳴らす
-		SoundManager::GetInstance().Play("Walk", false);
+		UpdateWalk();
 		break;
-
 	case PlayerState::StateKind::Dash:	// ダッシュ
-		// 移動速度をダッシュ時の速度にする
-		m_moveSpeed = min(m_moveSpeed + m_moveData.acc, m_moveData.dashSpeed);
-		// アニメーションをダッシュアニメーションに変更する
-		m_pModel->ChangeAnim(m_animData.run, true, false, kAnimChangeFrameNum::Dash);
-		// SEを鳴らす
-		SoundManager::GetInstance().Play("Dash", false);
+		UpdateDash();
 		break;
-
 	case PlayerState::StateKind::Attack:	// 攻撃
-		// 攻撃更新
 		UpdateAttack();
 		break;
-
 	case PlayerState::StateKind::HardAttack:	// 強攻撃
-		// 強攻撃更新
 		UpdateHardAttack();
 		break;
-
 	case PlayerState::StateKind::Dodge:	// 回避
-		// 攻撃状態の解除
-		m_isAttack = false;
-		m_isHardAttack = false;
-		// 回避更新
 		UpdateDodge();
 		break;
-
 	case PlayerState::StateKind::Damage:	// ダメージ
-		// 攻撃状態の解除
-		m_isAttack = false;
-		m_isHardAttack = false;
-		// アニメーションの変更
-		m_pModel->ChangeAnim(m_animData.damage, false, false, kAnimChangeFrameNum::Damage);
-		// アニメーションが終わったら移動状態に変更する
-		if (m_pModel->IsAnimEnd())
-		{
-			m_pModel->ChangeAnim(m_animData.idle, true, false, kAnimChangeFrameNum::Idle);
-			if (m_statusData.hp <= 0)return;
-			m_pState->EndState();
-		}
+		UpdateDamage();
 		break;
-
 	default:
 		// 上記以外だった場合は何もしない
 		break;
 	}
+}
+
+void Player::UpdateModel()
+{
+	// アニメーション更新
+	m_pModel->Update();
+	// モデル座標の設定
+	m_pModel->SetPos(m_characterInfo.pos);
+	// モデル回転の設定
+	m_pModel->SetRot(VGet(0.0f, m_angle, 0.0f));
+}
+
+void Player::UpdateAttackPosition(float angle)
+{
+	// 座標設定
+	m_rightAttackPos = MV1GetFramePosition(m_pModel->GetModelHandle(), m_rightAttackIndex);
+	m_leftAttackPos = MV1GetFramePosition(m_pModel->GetModelHandle(), m_leftAttackIndex);
+}
+
+void Player::UpdateShot()
+{
+	// カメラの角度行列の取得
+	MATRIX rotMtx = MGetRotY(m_pCamera->GetCameraAngleX());
+	// ショットにカメラの角度行列を渡す
+	m_pShot->SetCameraRot(rotMtx);
+	// 遠距離攻撃武器更新
+	m_pShot->Update(m_characterInfo.pos, m_angle);
+}
+
+void Player::UpdateFramePosition()
+{
+	// フレーム座標の更新
+	m_characterInfo.topPos = MV1GetFramePosition(m_pModel->GetModelHandle(), m_topFrameIndex);
+	m_characterInfo.bottomPos = MV1GetFramePosition(m_pModel->GetModelHandle(), m_bottomFrameIndex);
+	UpdateAttackPosition(m_angle);
+	m_hardAttackPos = MV1GetFramePosition(m_pModel->GetModelHandle(), m_hardAttackIndex);
+}
+
+void Player::UpdateDamageDecision()
+{
+	// ダメージ中の場合は攻撃を受けない
+	if (m_isDamage)
+	{
+		// 一定時間経過した場合
+		if (m_invincibleTime->Update())
+		{
+			// タイマーリセット
+			m_invincibleTime->Reset();
+			// ダメージ中フラグをfalseにする
+			m_isDamage = false;
+		}
+	}
+}
+
+void Player::ContinueAttack()
+{
+	// 衝突フラグを初期化する
+	m_isColl = false;
+	// 攻撃判定の初期化
+	m_isResetAttack = true;
+	// 攻撃を与えていない状態に戻す
+	m_isGiveDamage = false;
+	// 硬直時間のリセット
+	m_attackStanTime->Reset();
+	m_jabAttackStanTime->Reset();
+	// 攻撃時間のリセット
+	m_jabAttackTime->Reset();
+	// 次の攻撃をするフラグをfalseにする
+	m_isNextAttack = false;
+	// 攻撃カウントを増やす
+	m_attackCount++;
+	// SEを鳴らす(攻撃カウントによってSEを変える)
+	int attackNum = (m_attackCount % 3) + 1;
+	std::string seName = kAttackSeName + std::to_string(attackNum);
+	SoundManager::GetInstance().Play(seName.c_str(), true);
+}
+
+void Player::EndAttack()
+{
+	// 衝突フラグを初期化する
+	m_isColl = false;
+	// 攻撃を終了する
+	m_isAttack = false;
+	// 攻撃を与えていない状態に戻す
+	m_isGiveDamage = false;
+	// 硬直時間のリセット
+	m_attackStanTime->Reset();
+	m_jabAttackStanTime->Reset();
+	// 攻撃時間のリセット
+	m_jabAttackTime->Reset();
+	// 攻撃カウントをリセットする
+	m_attackCount = 0;
+	// ステイトを終了する
+	m_pState->EndState();
+}
+
+void Player::InitAttack()
+{
+	m_attackStanTime->Reset();		// 硬直時間のリセット
+	m_attackCount = 0;				// 攻撃回数のリセット
+
+	//	攻撃フラグを立てる
+	m_isAttack = true;
+	// 次の攻撃をするかどうかのフラグをfalseにする
+	m_isNextAttack = false;
+	// 攻撃判定リセットフラグを立てる
+	m_isResetAttack = true;
+}
+
+void Player::UpdateIdle()
+{
+	// 段々減速する
+	m_moveSpeed = max(m_moveSpeed - m_moveData.acc, 0.0f);
+	// アニメーションを待機状態に変更する
+	m_pModel->ChangeAnim(m_animData.idle, true, false, kAnimChangeFrameNum::Idle);
+}
+
+void Player::UpdateWalk()
+{
+	// 移動速度を歩き状態の速度に変更する
+	m_moveSpeed = min(m_moveSpeed + m_moveData.acc, m_moveData.walkSpeed);
+	// アニメーションを歩きアニメーションに変更する
+	m_pModel->ChangeAnim(m_animData.walk, true, false, kAnimChangeFrameNum::Walk);
+	// SEを鳴らす
+	SoundManager::GetInstance().Play("Walk", false);
+}
+
+void Player::UpdateDash()
+{
+	// 移動速度をダッシュ時の速度にする
+	m_moveSpeed = min(m_moveSpeed + m_moveData.acc, m_moveData.dashSpeed);
+	// アニメーションをダッシュアニメーションに変更する
+	m_pModel->ChangeAnim(m_animData.run, true, false, kAnimChangeFrameNum::Dash);
+	// SEを鳴らす
+	SoundManager::GetInstance().Play("Dash", false);
 }
 
 void Player::UpdateAttack()
@@ -665,96 +771,103 @@ void Player::UpdateAttack()
 	m_moveSpeed = 0.0f;
 
 	// エフェクトを流す
+	
+	// 左右どちらかに流すかの判定
+	VECTOR effectPos = m_rightAttackPos;	// 右手
+	if (m_attackCount % kAttackNum == kLeftAttackNum - 1) // 左手
+	{
+		effectPos = m_leftAttackPos;
+	}
+
 	// 現在の攻撃力によってエフェクトを変化させる
 	if (kFirstStepPower <= m_statusData.meleeAtk && m_statusData.meleeAtk < kSecondStagePower) // 一段階目
 	{
 		Effekseer3DManager::GetInstance().Add("Attack1",
-		Effekseer3DManager::PlayType::Normal, this, m_attackEffectPos);
+		Effekseer3DManager::PlayType::Normal, this, effectPos);
 	}
 	else if (kSecondStagePower <= m_statusData.meleeAtk && m_statusData.meleeAtk < kThirdStagePower) // 二段階目
 	{
 		Effekseer3DManager::GetInstance().Add("Attack2",
-		Effekseer3DManager::PlayType::Normal, this, m_attackEffectPos);
+		Effekseer3DManager::PlayType::Normal, this, effectPos);
 	}
 	else if (kThirdStagePower <= m_statusData.meleeAtk)	// 三段階目
 	{
 		Effekseer3DManager::GetInstance().Add("Attack3",
-		Effekseer3DManager::PlayType::Normal, this, m_attackEffectPos);
+		Effekseer3DManager::PlayType::Normal, this, effectPos);
 	}
-
 	// 攻撃回数によってアニメーションを変更する
-	switch (m_attackCount % 3)
+	switch (m_attackCount % kAttackNum)
 	{
 	case 0:
 		m_pModel->ChangeAnim(m_animData.attack1, false, false, kAnimChangeFrameNum::Attack1);
 		break;
-
 	case 1:
 		m_pModel->ChangeAnim(m_animData.attack2, false, false, kAnimChangeFrameNum::Attack2);
 		break;
-
 	case 2:
 		m_pModel->ChangeAnim(m_animData.attack3, false, false, kAnimChangeFrameNum::Attack3);
 		break;
-
 	default:
 		break;
 	}
 
-	if (m_attackStanTime->Update())
+	// 連続攻撃用の処理
+	if (m_attackCount % kAttackNum == kAttackNum - 1) // 最後の一回
 	{
-		// 攻撃中に攻撃ボタンが押された場合
-		if (Pad::IsTrigger(PAD_INPUT_3) && !m_isNextAttack)
+		if (m_attackStanTime->Update())
 		{
-			// 次に攻撃するフラグを立てる
-			m_isNextAttack = true;
+			// 攻撃中に攻撃ボタンが押された場合
+			if (Pad::IsTrigger(PAD_INPUT_3) && !m_isNextAttack)
+			{
+				// 次に攻撃するフラグを立てる
+				m_isNextAttack = true;
+			}
+		}
+	}
+	else	// それ以外
+	{
+		if (m_jabAttackStanTime->Update())
+		{
+			// 攻撃中に攻撃ボタンが押された場合
+			if (Pad::IsTrigger(PAD_INPUT_3) && !m_isNextAttack)
+			{
+				// 次に攻撃するフラグを立てる
+				m_isNextAttack = true;
+			}
 		}
 	}
 
-	// アニメーションが終わった段階で次に攻撃するフラグが立っていなかった場合
-	if (m_pModel->IsAnimEnd() && !m_isNextAttack)
+	// 攻撃の回数によって処理を変える
+	if (m_attackCount % kAttackNum == kAttackNum - 1) // 最後の一回
 	{
-		// 衝突フラグをfalseにする
-		m_isColl = false;
-		// 攻撃を終了する
-		m_isAttack = false;
-		// 硬直時間をリセットする
-		m_attackStanTime->Reset();
-		// 攻撃カウントをリセットする
-		m_attackCount = 0;
-		// ステイトを終了する
-		m_pState->EndState();
-	}
-	// アニメーションが終わった段階で次に攻撃するフラグが立っていた場合
-	if (m_pModel->IsAnimEnd() && m_isNextAttack)
-	{
-		// 衝突フラグをfalseにする
-		m_isColl = false;
-		// 攻撃判定の初期化
-		m_isResetAttack = true;
-		// 硬直時間のリセット
-		m_attackStanTime->Reset();
-		// 次の攻撃をするフラグをfalseにする
-		m_isNextAttack = false;
-		// 攻撃カウントを増やす
-		m_attackCount++;
-		// SEを鳴らす(攻撃カウントによってSEを変える)
-		switch (m_attackCount % 3)
+		// アニメーションが終わった段階で次に攻撃するフラグが立っていなかった場合
+		if (m_pModel->IsAnimEnd() && !m_isNextAttack)
 		{
-		case 0:
-			SoundManager::GetInstance().Play("Attack1", true);
-			break;
-		case 1:
-			SoundManager::GetInstance().Play("Attack2", true);
-			break;
-		case 2:
-			SoundManager::GetInstance().Play("Attack3", true);
-			break;
-		default:
-			break;
+			// 攻撃終了処理
+			EndAttack();
 		}
-		
+		// アニメーションが終わった段階で次に攻撃するフラグが立っていた場合
+		if (m_pModel->IsAnimEnd() && m_isNextAttack)
+		{
+			// 攻撃継続処理
+			ContinueAttack();
+		}
 	}
+	else // それ以外
+	{
+		// アニメーションが終わった段階で次に攻撃するフラグが立っていなかった場合
+		if (m_jabAttackTime->Update() && !m_isNextAttack)
+		{
+			EndAttack();
+		}
+		// アニメーションが終わった段階で次に攻撃するフラグが立っていた場合
+		if (m_jabAttackTime ->Update() && m_isNextAttack)
+		{
+			ContinueAttack();
+		}
+	}
+
+	
 }
 
 void Player::UpdateHardAttack()
@@ -788,13 +901,19 @@ void Player::UpdateHardAttack()
 	{
 		// ステイト終了
 		m_pState->EndState();
-		// 強攻撃フラグをfalseにする
+		// 強攻撃フラグを初期化する
 		m_isHardAttack = false;
+		// 攻撃を与えていない状態に戻す
+		m_isGiveDamage = false;
 	}
 }
 
 void Player::UpdateDodge()
 {
+	// 攻撃状態の解除
+	m_isAttack = false;
+	m_isHardAttack = false;
+
 	// 回避処理
 	// スピードの調整
 	m_moveSpeed = m_moveData.walkSpeed * kDodgeSpeedRate;
@@ -821,14 +940,18 @@ void Player::UpdateDodge()
 	}
 }
 
-void Player::UpdateAttackPosition(float angle)
+void Player::UpdateDamage()
 {
-	// 向いている方向を出す
-	VECTOR vec = VGet(sinf(angle + DX_PI_F), 0.0f, cosf(angle + DX_PI_F));
-	// 前に出す
-	vec = VScale(vec, kAttackDistance);
-	// 出したベクトルを現在位置に足す
-	m_attackPos = VAdd(m_characterInfo.bottomPos, vec);
-
-	m_attackEffectPos = MV1GetFramePosition(m_pModel->GetModelHandle(), m_attackEffectIndex);
+	// 攻撃状態の解除
+	m_isAttack = false;
+	m_isHardAttack = false;
+	// アニメーションの変更
+	m_pModel->ChangeAnim(m_animData.damage, false, false, kAnimChangeFrameNum::Damage);
+	// アニメーションが終わったら移動状態に変更する
+	if (m_pModel->IsAnimEnd())
+	{
+		m_pModel->ChangeAnim(m_animData.idle, true, false, kAnimChangeFrameNum::Idle);
+		if (m_statusData.hp <= 0)return;
+		m_pState->EndState();
+	}
 }

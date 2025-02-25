@@ -179,7 +179,6 @@
     <ClCompile Include="Object\Enemy\EnemyPlant.cpp" />
     <ClCompile Include="Utility\Gear.cpp" />
     <ClCompile Include="Object\RecoveryItem.cpp" />
-    <ClCompile Include="Scene\SceneClear.cpp" />
     <ClCompile Include="Scene\SceneGameOver.cpp" />
     <ClCompile Include="Scene\SceneTitle.cpp" />
     <ClCompile Include="Scene\SceneSelect.cpp" />
@@ -234,7 +233,6 @@
     <ClInclude Include="Object\Enemy\EnemyPlant.h" />
     <ClInclude Include="Utility\Gear.h" />
     <ClInclude Include="Object\RecoveryItem.h" />
-    <ClInclude Include="Scene\SceneClear.h" />
     <ClInclude Include="Scene\SceneGameOver.h" />
     <ClInclude Include="Scene\SceneTitle.h" />
     <ClInclude Include="Scene\SceneSelect.h" />

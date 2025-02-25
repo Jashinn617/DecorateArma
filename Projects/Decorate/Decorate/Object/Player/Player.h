@@ -110,6 +110,26 @@ public:		// 関数
 
 private:	// 関数
 	/// <summary>
+	/// モデル初期化
+	/// </summary>
+	void InitModelData();
+
+	/// <summary>
+	/// フレーム初期化
+	/// </summary>
+	void InitFrame();
+
+	/// <summary>
+	/// 情報初期化
+	/// </summary>
+	void InitData();
+
+	/// <summary>
+	/// 当たり判定情報初期化
+	/// </summary>
+	void InitColl();
+
+	/// <summary>
 	/// 角度更新
 	/// </summary>
 	void UpdateAngle();
@@ -141,6 +161,64 @@ private:	// 関数
 	void UpdateState();
 
 	/// <summary>
+	/// モデル関係更新
+	/// </summary>
+	void UpdateModel();
+
+	/// <summary>
+	/// 攻撃座標更新
+	/// </summary>
+	/// <param name="angle"></param>
+	void UpdateAttackPosition(float angle);
+
+	/// <summary>
+	/// ショット更新
+	/// </summary>
+	void UpdateShot();
+
+	/// <summary>
+	/// フレーム座標更新
+	/// </summary>
+	void UpdateFramePosition();
+
+	/// <summary>
+	/// ダメージ判定更新
+	/// </summary>
+	void UpdateDamageDecision();
+
+	/// <summary>
+	/// 攻撃継続処理
+	/// </summary>
+	void ContinueAttack();
+
+	/// <summary>
+	/// 攻撃終了処理
+	/// </summary>
+	void EndAttack();
+
+private:	// ステイト初期化
+	/// <summary>
+	/// 攻撃初期化
+	/// </summary>
+	void InitAttack();
+
+private:	// ステイト更新
+	/// <summary>
+	/// 待機更新
+	/// </summary>
+	void UpdateIdle();
+
+	/// <summary>
+	/// 歩き更新
+	/// </summary>
+	void UpdateWalk();
+
+	/// <summary>
+	/// ダッシュ更新
+	/// </summary>
+	void UpdateDash();
+
+	/// <summary>
 	/// 攻撃更新
 	/// </summary>
 	void UpdateAttack();
@@ -156,39 +234,45 @@ private:	// 関数
 	void UpdateDodge();
 
 	/// <summary>
-	/// 攻撃座標更新
+	/// ダメージ処理更新
 	/// </summary>
-	/// <param name="angle"></param>
-	void UpdateAttackPosition(float angle);
+	void UpdateDamage();
 
 private:	// 変数
-	int m_maxHp;									// 最大HP
-	int m_attackCount;								// 連続で攻撃した回数
+	int m_maxHp;										// 最大HP
+	int m_attackCount;									// 連続で攻撃した回数
 
-	int m_attackEffectIndex;						// 攻撃時エフェクト座標用フレーム番号
-	int m_hardAttackIndex;							// 強攻撃座標用フレーム番号
+	int m_rightAttackIndex;								// 攻撃時エフェクト座標用フレーム番号
+	int m_leftAttackIndex;								// 攻撃時エフェクト座標用フレーム番号
+	int m_hardAttackIndex;								// 強攻撃座標用フレーム番号
 
-	bool m_isColl;									// 攻撃が当たったか
-	bool m_isAttack;								// 攻撃中か
-	bool m_isHardAttack;							// 強攻撃中か
-	bool m_isNextAttack;							// 次の攻撃が実行されるかどうか
-	bool m_isLockOn;								// ロックオン状態かどうか
-	bool m_isDodge;									// 回避中かどうか
+	bool m_isColl;										// 攻撃が当たったか
+	bool m_isAttack;									// 攻撃中か
+	bool m_isHardAttack;								// 強攻撃中か
+	bool m_isNextAttack;								// 次の攻撃が実行されるかどうか
+	bool m_isLockOn;									// ロックオン状態かどうか
+	bool m_isDodge;										// 回避中かどうか
+	bool m_isGiveDamage;								// ダメージを与えたかどうか
 
-	VECTOR m_moveDirection;							// 移動方向
-	VECTOR m_attackPos;								// 攻撃座標
-	VECTOR m_hardAttackPos;							// 強攻撃座標
-	VECTOR m_dodgeDirection;						// 回避方向
-	VECTOR m_prevDodgeDirection;					// 回避前に向いていた方向
-	VECTOR m_attackEffectPos;						// 攻撃時エフェクト座標
+	VECTOR m_moveDirection;								// 移動方向
+	VECTOR m_attackPos;									// 攻撃座標
+	VECTOR m_hardAttackPos;								// 強攻撃座標
+	VECTOR m_dodgeDirection;							// 回避方向
+	VECTOR m_prevDodgeDirection;						// 回避前に向いていた方向
+	VECTOR m_rightAttackPos;							// 右手攻撃座標
+	VECTOR m_leftAttackPos;								// 左手攻撃座標
 
-	std::shared_ptr<PlayerState> m_pState;			// ステイトポインタ
-	std::shared_ptr<Camera> m_pCamera;				// カメラポインタ
-	std::shared_ptr<Shot> m_pShot;					// ショット
-	std::shared_ptr<CollisionShape> m_attackColl;	// 剣の当たり判定
-	std::shared_ptr<CollisionShape> m_hardAtkColl;	// 強攻撃当たり判定
+	std::shared_ptr<PlayerState> m_pState;				// ステイトポインタ
+	std::shared_ptr<Camera> m_pCamera;					// カメラポインタ
+	std::shared_ptr<Shot> m_pShot;						// ショット
 
-	std::shared_ptr<Time> m_attackStanTime;			// 攻撃間隔時間
-	std::shared_ptr<Time> m_invincibleTime;			// 無敵時間
-	std::shared_ptr<Time> m_dodgeTime;				// 回避時間
+	std::shared_ptr<CollisionShape> m_rightAttackColl;	// 右手当たり判定
+	std::shared_ptr<CollisionShape> m_leftAttackColl;	// 左手当たり判定
+	std::shared_ptr<CollisionShape> m_hardAtkColl;		// 強攻撃当たり判定
+
+	std::shared_ptr<Time> m_attackStanTime;				// 攻撃間隔時間
+	std::shared_ptr<Time> m_jabAttackStanTime;			// ジャブ攻撃間隔時間
+	std::shared_ptr<Time> m_jabAttackTime;				// ジャブ攻撃時間
+	std::shared_ptr<Time> m_invincibleTime;				// 無敵時間
+	std::shared_ptr<Time> m_dodgeTime;					// 回避時間
 };

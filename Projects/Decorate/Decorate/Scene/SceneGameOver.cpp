@@ -6,89 +6,74 @@
 #include "../Utility/Pad.h"
 #include "../Utility/SoundManager.h"
 
+#include <string>
 #include <cassert>
 
 namespace
 {
-	const char* const kTextPath = "Data/Image/GameOver/GameOver.png";	// テキスト画像ファイルパス
-	const char* const kOneMorePath = "Data/Image/OneMore.png";			// もう一度画像ファイルパス
-	const char* const kSelectPath = "Data/Image/Select.png";			// セレクト画像ファイルパス
-	const char* const kResultPath = "Data/Image/Clear/Result.png";		// リザルト画像ファイルパス
-	const char* const kModelPath = "Data/Model/Player/Player.mv1";		// モデルファイルパス
-	const char* const kFfoModelPath = "Data/Model/ShotWeapon/UFO.mv1";  // UFOモデルファイルパス
+	const std::string kTextPath = "Data/Image/Result/GameOverText.png";			// テキスト画像ファイルパス
+	const std::string kBoxPath = "Data/Image/Result/Box.png";					// ボックス画像ファイルパス
+	const std::string kCursorPath = "Data/Image/Result/Cursor.png";				// カーソル画像ファイルパス
+	const std::string kMouseCursorPath = "Data/Image/Result/MouseCursor.png";	// マウスカーソル画像ファイルパス
+	const std::string kModelPath = "Data/Model/Player/Player.mv1";				// モデルファイルパス
 
 	constexpr int kImgDispSpeed = 7;									// 画像表示速度
 	constexpr int kMaxAlpha = 255;										// 画像の最大透明度
 
-	constexpr int kAnimNum = 8;											// モデルのアニメーション番号
-	constexpr float kAnimSpeed = 1.0f;									// アニメーション速度
+	constexpr int kAnimNum = 9;											// モデルのアニメーション番号
+	constexpr float kAnimSpeed = 0.5f;									// モデルのアニメーション速度
+	constexpr float kModelRotY = -45 * DX_PI_F / 180.0f;				// モデルの角度
 
 	constexpr float kNear = 5.0f;										// カメラの一番近い描画距離
 	constexpr float kFar = 500.0f;										// カメラの一番遠い描画距離
-	constexpr int kTextPosX = 550;
-	constexpr int kTextPosY = 50;
 
-	constexpr int kSelectPosX = 580;
-	constexpr int kOneMorePosX = kSelectPosX + 800;
-	constexpr int kBoxPosY = 500;
-	constexpr float kModelRotY = 125 * DX_PI_F / 180.0f;				// モデルの角度
+	constexpr int kMouseCursorSpeed = 60;								// マウスカーソル速度
+	constexpr float kMouseCursorSinSpeed = 0.04f;						// マウスカーソル拡縮速度
+	constexpr float kMouseCursorAnimSwing = 0.12f;						// マウスカーソル拡縮幅
+	constexpr float kNormalMouseCursorExtRate = 1.0f;					// 通常時マウスカーソル拡大率
 
-	constexpr float kUfoSinSpeed = 0.04f;								// UFO昇降速度
-	constexpr float kUfoSinSwing = 0.08f;								// UFO昇降幅
-	constexpr float kUfoSpeed = 0.2f;									// UFO移動速度
-
-	constexpr float kBoxSinSpeed = 0.07f;								// ボックス拡縮速度
-	constexpr float kBoxAnimSwing = 0.03f;								// ボックス拡縮幅
-	constexpr float kNormalBoxExtRate = 1.0f;							// 通常時ボックス拡大率
-
+	/*座標関係*/
+	// 画像
+	constexpr int kTextPosX = 500;										// クリアテキスト画像X座標
+	constexpr int kTextPosY = 50;										// クリアテキスト画像Y座標
+	constexpr int kBoxPosX = 190;										// ボックス画像X座標
+	constexpr int kBoxPosY = 220;										// ボックス画像Y座標
+	constexpr int kCursorLeftPosX = 348;								// カーソル画像左側X座標
+	constexpr int kCursorRightPosX = kCursorLeftPosX + 692;				// カーソル画像右側X座標
+	constexpr int kCursorPosY = 650;									// カーソル画像Y座標
+	constexpr int kMouseCursorLeftPosX = kCursorLeftPosX + 430;			// マウスカーソル画像左側X座標
+	constexpr int kMouseCursorRightPosX = kCursorRightPosX + 430;		// マウスカーソル画像右側X座標
+	constexpr int kMouseCursorPosY = kCursorPosY + 230;					// マウスカーソル画像Y座標
+	// モデル
 	constexpr VECTOR kCameraPos = { 0.0f,15.0f,0.0f };					// カメラ座標
 	constexpr VECTOR kModelPos = { 40.0f,0.0f,100.0f };					// モデル座標
 	constexpr VECTOR kTargetPos = { 0.0f,25.0f,100.0f };				// ターゲット座標
 	constexpr VECTOR kModelScale = { 0.5f,0.5f,0.5f };					// モデルスケール
 	constexpr VECTOR kModelRot = { 0.0f,kModelRotY,0.0f };				// モデル角度
-	constexpr VECTOR kUfoStartPos = { 100.0f,20.0f,100.0f };			// UFOの初期座標
-	constexpr VECTOR kUfoGoalPos = { 0.0f,20.0f,100.0f };				// UFOの最終座標
-	constexpr VECTOR kUfoScale = { 0.2f,0.2f,0.2f };					// UFOのスケール
 }
 
 SceneGameOver::SceneGameOver(Game::StageKind stageKind):
+	m_mouseCursorPosX(0),
 	m_animPlayTime(0),
 	m_imgAlpha(0),
-	m_boxSinCount(0.0),
-	m_expansionBox(0.0),
-	m_oneMoreBoxExtRate(0.0),
-	m_selectBoxExtRate(0.0),
-	m_ufoSinCount(0.0),
-	m_ufoSinPosY(0.0),
+	m_mouseCursorSinCount(0.0),
+	m_mouseCursorScaleSize(0.0),
+	m_mouseCursorScaleRate(0.0),
 	m_isLeft(true),
 	m_isImg(false),
-	m_isUfoMove(false),
 	m_isFallDownSE(false),
-	m_ufoPos(kUfoStartPos),
+	m_isCursorMove(false),
 	m_stageKind(stageKind)
 {
 	// 画像ロード
-	m_textH = LoadGraph(kTextPath);
-	// ロードに失敗したら止める
-	assert(m_textH != -1);
-	// 以下同じ処理
-	m_oneMoreBoxH = LoadGraph(kOneMorePath);
-	assert(m_oneMoreBoxH != -1);
-	m_selectBoxH = LoadGraph(kSelectPath);
-	assert(m_selectBoxH != -1);
-	m_resultBoxH = LoadGraph(kResultPath);
-	assert(m_resultBoxH != -1);
+	LoadImg();
 	// モデルロード
-	m_modelH = MV1LoadModel(kModelPath);
-	assert(m_modelH != -1);
-	m_ufoModelH = MV1LoadModel(kFfoModelPath);
-	assert(m_ufoModelH != -1);
+	LoadModel();
+
 	// アニメーションのアタッチ
 	m_animIndex = MV1AttachAnim(m_modelH, kAnimNum, -1, false);
 	// アニメーションの総再生時間の取得
 	m_animTotalTime = MV1GetAttachAnimTotalTime(m_modelH, m_animIndex);
-	
-	
 
 	// SEを鳴らす
 	SoundManager::GetInstance().Play("Dead", false);
@@ -97,11 +82,9 @@ SceneGameOver::SceneGameOver(Game::StageKind stageKind):
 SceneGameOver::~SceneGameOver()
 {
 	// 画像デリート
-	DeleteGraph(m_textH);
-	DeleteGraph(m_oneMoreBoxH);
-	DeleteGraph(m_selectBoxH);
-	DeleteGraph(m_resultBoxH);
-	MV1DeleteModel(m_modelH);
+	DeleteImg();
+	// モデルデリート
+	DeleteModel();
 }
 
 void SceneGameOver::Init()
@@ -114,8 +97,6 @@ void SceneGameOver::Init()
 	MV1SetPosition(m_modelH, kModelPos);
 	MV1SetScale(m_modelH, kModelScale);
 	MV1SetRotationXYZ(m_modelH, kModelRot);
-	MV1SetPosition(m_ufoModelH, m_ufoPos);
-	MV1SetScale(m_ufoModelH, kUfoScale);
 }
 
 std::shared_ptr<SceneBase> SceneGameOver::Update()
@@ -124,13 +105,6 @@ std::shared_ptr<SceneBase> SceneGameOver::Update()
 
 	// モデル更新
 	UpdateModel();
-
-	// UFO更新
-	UpdateUFO();
-
-	// ボックス更新
-	UpdateBox();
-
 	// カーソル更新
 	UpdateCursor();	
 
@@ -167,7 +141,9 @@ void SceneGameOver::Draw()
 	// テキスト描画
 	DrawGraph(kTextPosX, kTextPosY, m_textH, true);
 	// ボックス描画
-	DrawCursorBox();
+	DrawGraph(kBoxPosX, kBoxPosY, m_boxH, true);
+	// カーソル描画
+	DrawCursor();
 	// 透明度の設定を戻す
 	SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
 }
@@ -178,69 +154,76 @@ void SceneGameOver::End()
 	SoundManager::GetInstance().DesignationStopSound("GameOverScene");
 }
 
-void SceneGameOver::UpdateBox()
-{
-	// 選択中ボックス拡縮処理
-	m_boxSinCount += kBoxSinSpeed;
-	m_expansionBox = sinf(m_boxSinCount) * kBoxAnimSwing;
-
-	// 左側のボックスが選ばれていた場合
-	if (m_isLeft)
-	{
-		m_oneMoreBoxExtRate = kNormalBoxExtRate;
-		m_selectBoxExtRate = kNormalBoxExtRate + m_expansionBox;
-
-		if (m_isImg || m_imgAlpha >= kMaxAlpha)
-		{
-			// Aボタンが押された場合はセレクトに飛ぶ
-			if (Pad::IsTrigger(PAD_INPUT_1))
-			{
-				m_nextScene = std::make_shared<SceneSelect>();
-				// SEを流す
-				SoundManager::GetInstance().Play("SelectSelect", false);
-			}
-		}
-	}
-	// 右側のボックスが選ばれていた場合
-	else
-	{
-		m_oneMoreBoxExtRate = kNormalBoxExtRate + m_expansionBox;
-		m_selectBoxExtRate = kNormalBoxExtRate;
-
-		if (m_isImg || m_imgAlpha >= kMaxAlpha)
-		{
-			// Aボタンが押された場合は直前のステージに飛ぶ
-			if (Pad::IsTrigger(PAD_INPUT_1))
-			{
-				m_nextScene = std::make_shared<SceneStage>(m_stageKind);
-				// SEを流す
-				SoundManager::GetInstance().Play("StageSelect", false);
-			}
-		}	
-	}
-}
-
-void SceneGameOver::DrawCursorBox()
-{
-	// セレクト
-	DrawRotaGraph(kSelectPosX, kBoxPosY,
-		m_selectBoxExtRate, 0.0,
-		m_selectBoxH, true);
-
-	// もう一度
-	DrawRotaGraph(kOneMorePosX, kBoxPosY,
-		m_oneMoreBoxExtRate, 0.0,
-		m_oneMoreBoxH, true);	
-}
-
 void SceneGameOver::UpdateCursor()
 {
-	// 左右ボタンが押されたら上下を入れ替える
-	if (Pad::IsTrigger(PAD_INPUT_LEFT) || Pad::IsTrigger(PAD_INPUT_RIGHT))
+	// 画像が完全に移っていなかった場合は処理をしない
+	if (!m_isImg || m_imgAlpha < kMaxAlpha) return;
+
+	// 左右ボタンが押されたらカーソルを移動する
+	if (Pad::IsTrigger(PAD_INPUT_LEFT))
 	{
-		m_isLeft = !m_isLeft;
 		// サウンドを流す
-		SoundManager::GetInstance().Play("CursorMove", true);
+		if (!m_isLeft)
+		{
+			SoundManager::GetInstance().Play("CursorMove", true);
+			m_isCursorMove = true;
+		}
+		m_isLeft = true;
+	}
+	else if (Pad::IsTrigger(PAD_INPUT_RIGHT))
+	{
+		// サウンドを流す
+		if (m_isLeft)
+		{
+			SoundManager::GetInstance().Play("CursorMove", true);
+			m_isCursorMove = true;
+		}
+		m_isLeft = false;
+	}
+
+	// カーソルが左にあった場合
+	if (m_isLeft)
+	{
+		// Aボタンが押されたらセレクトに戻る
+		if (Pad::IsTrigger(PAD_INPUT_1))
+		{
+			m_nextScene = std::make_shared<SceneSelect>();
+		}
+		// マウスカーソルを動かす
+		m_mouseCursorPosX -= kMouseCursorSpeed;
+		if (m_mouseCursorPosX <= kMouseCursorLeftPosX)
+		{
+			m_mouseCursorPosX = kMouseCursorLeftPosX;
+			m_isCursorMove = false;
+		}
+	}
+	// カーソルが右にあった場合
+	else
+	{
+		// Aボタンが押されたらステージに戻る
+		if (Pad::IsTrigger(PAD_INPUT_1))
+		{
+			m_nextScene = std::make_shared<SceneStage>(m_stageKind);
+		}
+		// マウスカーソルを動かす
+		m_mouseCursorPosX += kMouseCursorSpeed;
+		if (m_mouseCursorPosX >= kMouseCursorRightPosX)
+		{
+			m_mouseCursorPosX = kMouseCursorRightPosX;
+			m_isCursorMove = false;
+		}
+	}
+
+	// マウスカーソル拡縮処理
+	m_mouseCursorSinCount += kMouseCursorSinSpeed;
+	m_mouseCursorScaleRate = sinf(m_mouseCursorSinCount) * kMouseCursorAnimSwing;
+	if (!m_isCursorMove)
+	{
+		m_mouseCursorScaleSize = kNormalMouseCursorExtRate + m_mouseCursorScaleRate;
+	}
+	else
+	{
+		m_mouseCursorScaleSize = kNormalMouseCursorExtRate;
 	}
 }
 
@@ -257,37 +240,62 @@ void SceneGameOver::UpdateModel()
 		SoundManager::GetInstance().Play("GameOverScene", false);
 		// 画像表示フラグを立てる
 		m_isImg = true;
-		// UFOを動かす
-		m_isUfoMove = true;
 	}
 
 	// 再生時間の設定
 	MV1SetAttachAnimTime(m_modelH, m_animIndex, m_animPlayTime);
 }
 
-void SceneGameOver::UpdateUFO()
+void SceneGameOver::DrawCursor()
 {
-	if (!m_isUfoMove) return;
-
-	// UFOの上下移動
-	m_ufoSinCount += kUfoSinSpeed;
-	m_ufoSinPosY = sinf(m_ufoSinCount) * kUfoSinSwing;
-	m_ufoPos.y += m_ufoSinPosY;
-
-	// UFOの移動
-	m_ufoPos.x -= kUfoSpeed;
-	if (m_ufoPos.x <= kUfoGoalPos.x)
+	// カーソル描画
+	if (m_isLeft)
 	{
-		m_ufoPos.x = kUfoGoalPos.x;
+		DrawGraph(kCursorLeftPosX, kCursorPosY, m_cursorH, true);
 	}
-	
-	// UFOの座標更新
-	MV1SetPosition(m_ufoModelH, m_ufoPos);
+	else
+	{
+		DrawGraph(kCursorRightPosX, kCursorPosY, m_cursorH, true);
+	}
+	// マウスカーソル描画
+	DrawRotaGraph(m_mouseCursorPosX, kMouseCursorPosY,
+		m_mouseCursorScaleSize, 0.0,
+		m_mouseCursorH, true);
 }
 
 void SceneGameOver::DrawModel()
 {
 	// モデル描画
 	MV1DrawModel(m_modelH);
-	MV1DrawModel(m_ufoModelH);
+}
+
+void SceneGameOver::LoadImg()
+{
+	m_textH = LoadGraph(kTextPath.c_str());
+	assert(m_textH != -1);
+	m_boxH = LoadGraph(kBoxPath.c_str());
+	assert(m_boxH != -1);
+	m_cursorH = LoadGraph(kCursorPath.c_str());
+	assert(m_cursorH != -1);
+	m_mouseCursorH = LoadGraph(kMouseCursorPath.c_str());
+	assert(m_mouseCursorH != -1);
+}
+
+void SceneGameOver::LoadModel()
+{
+	m_modelH = MV1LoadModel(kModelPath.c_str());
+	assert(m_modelH != -1);
+}
+
+void SceneGameOver::DeleteImg()
+{
+	DeleteGraph(m_textH);
+	DeleteGraph(m_boxH);
+	DeleteGraph(m_cursorH);
+	DeleteGraph(m_mouseCursorH);
+}
+
+void SceneGameOver::DeleteModel()
+{
+	MV1DeleteModel(m_modelH);
 }
